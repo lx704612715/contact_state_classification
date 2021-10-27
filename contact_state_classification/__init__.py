@@ -1,3 +1,5 @@
-from contact_state_classification.CS_Classifier import CSClassifier
+from . import (
+    CS_Classifier
+)
 
-__all__ = ["CS_Classifier"]
+from .CS_Classifier import CSClassifier
