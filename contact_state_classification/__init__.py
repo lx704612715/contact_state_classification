@@ -1,5 +1,7 @@
 from . import (
-    CS_Classifier
+    cs_classifier,
+    config
 )
 
-from .CS_Classifier import CSClassifier
+from .cs_classifier import CSClassifier
+from .config import *

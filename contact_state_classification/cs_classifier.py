@@ -4,6 +4,7 @@ import numpy as np
 from loguru import logger
 from sklearn import preprocessing
 from sklearn.neighbors import KNeighborsClassifier
+import config
 
 
 class CSClassifier:
