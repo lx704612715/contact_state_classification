@@ -68,17 +68,7 @@ class CSClassifier:
         if simple_features is None:
             simple_features = ["dist"]
         self.lb = preprocessing.LabelBinarizer()
-        for index, row in self.csd_data_df.iterrows():
-            x = []
-            for feature in simple_features:
-                x = x + row[feature]
-            for feature in complex_features:
-                x = x + np.concatenate(row[feature]).ravel().tolist()
-
-            if index == 74:
-                continue
-            self.X.append(x)
-            self.Y.append(row["label"])
+        self.X, self.Y = self.extract_features_from_df(self.csd_data_df.iloc[:74])
         self.X = np.array(self.X)
         # self.X = self.X.reshape([self.X.shape[0], self.X.shape[1] * self.X.shape[2]])
         self.lb.fit(self.Y)
@@ -102,3 +92,18 @@ class CSClassifier:
         pca.fit(self.X)
         print(pca.explained_variance_ratio_)
         print(pca.explained_variance_)
+
+    @staticmethod
+    def extract_features_from_df(df):
+        X = []
+        y = []
+        for index, row in df.iterrows():
+            x = []
+            for feature in cfg.params["simple_features"]:
+                x = x + row[feature]
+            for feature in cfg.params["complex_features"]:
+                x = x + np.concatenate(row[feature]).ravel().tolist()
+            X.append(x)
+            y.append(row["label"])
+        X = np.array(X)
+        return X, y

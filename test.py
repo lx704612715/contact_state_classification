@@ -20,19 +20,10 @@ def main():
     cs_classifier.pca()
     test_idx = [74]
     df = cs_classifier.csd_data_df.iloc[test_idx]
-    X = []
-    Y = []
-    for index, row in df.iterrows():
-        x = []
-        for feature in cfg.params["simple_features"]:
-            x = x + row[feature]
-        for feature in cfg.params["complex_features"]:
-            x = x + np.concatenate(row[feature]).ravel().tolist()
-        X.append(x)
-        Y.append(row["label"])
-    X = np.array(X)
+    
+    X, y = csc.CSClassifier.extract_features_from_df(df)
     print(cs_classifier.predict(input_data=X))
-    print(Y)
+    print(y)
 
 if __name__ == "__main__":
     main()
