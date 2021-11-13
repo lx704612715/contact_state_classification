@@ -30,7 +30,7 @@ class CSClassifier:
 
         # Train the classifier
         self.load_data()
-        self.train_classifier(features="dist")
+        self.train_classifier(features=["dist", "obs_ee_theta", "obs_ee_phi"])
 
         self.get_dataset_information()
 
@@ -65,12 +65,13 @@ class CSClassifier:
         for index, row in self.csd_data_df.iterrows():
             x.append(row[features])
             # use the first two string values as label
-            y.append(row["label"][:2])
+            y.append(row["label"])
         x = np.array(x)
+        x = x.reshape([x.shape[0], x.shape[1] * x.shape[2]])
         self.lb.fit(y)
         y = self.lb.transform(y)
-        num_labels = np.unique(y).shape[0] + 1
-        self.classifier = KNeighborsClassifier(num_labels).fit(x, y)
+        num_labels = np.unique(y, axis=0).shape[0]
+        self.classifier = KNeighborsClassifier(n_neighbors=num_labels).fit(x, y)
 
     def get_dataset_information(self):
         self.all_classes = self.lb.classes_
