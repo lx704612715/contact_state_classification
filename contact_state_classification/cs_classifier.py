@@ -4,6 +4,7 @@ import numpy as np
 from loguru import logger
 from sklearn import preprocessing
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn_som.som import SOM
 from . import config as cfg
 from sklearn.decomposition import PCA
 
@@ -74,8 +75,14 @@ class CSClassifier:
         self.lb.fit(self.Y)
         self.Y = self.lb.transform(self.Y)
         num_labels = np.unique(self.Y, axis=0).shape[0]
-        self.classifier = KNeighborsClassifier(n_neighbors=num_labels)
-        self.classifier.fit(self.X, self.Y)
+        if cfg.params["classifier"] == "KNN":
+            self.classifier = KNeighborsClassifier(n_neighbors=num_labels)
+            self.classifier.fit(self.X, self.Y)
+        elif cfg.params["classifier"] == "SOM":
+            self.classifier = SOM(m=6, n=1, dim=self.X.shape[1])
+            self.classifier.fit(self.X, epochs=10, shuffle=False)
+        else:
+            return
 
     def get_dataset_information(self):
         self.all_classes = self.lb.classes_
@@ -84,11 +91,14 @@ class CSClassifier:
 
     def predict(self, input_data):
         result = self.classifier.predict(input_data)
-        label = self.lb.inverse_transform(result)
-        return result, label
+        if cfg.params["classifier"] == "KNN":
+            label = self.lb.inverse_transform(result)
+            return result, label
+        elif cfg.params["classifier"] == "SOM":
+            return result, None
 
-    def pca(self):
-        pca = PCA(n_components=5, svd_solver='auto', whiten='true')
+    def pca(self, n_components=5):
+        pca = PCA(n_components=n_components, svd_solver='auto', whiten='true')
         pca.fit(self.X)
         print(pca.explained_variance_ratio_)
         print(pca.explained_variance_)

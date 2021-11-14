@@ -7,5 +7,6 @@ path = {
 # Since different classifiers may be used, parameters may need to be nested.
 params = {
     "simple_features": ["dist", "obs_ee_theta", "obs_ee_phi"],
-    "complex_features": ["error_q"]
+    "complex_features": ["error_q"],
+    "classifier": "SOM"
 }
