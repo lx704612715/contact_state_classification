@@ -26,6 +26,7 @@ class CSClassifier:
         self.csd_data_dict = None
         self.X = []
         self.y = []
+        self.X_df = None
 
         # Classifier
         self.lb = None
@@ -37,8 +38,7 @@ class CSClassifier:
 
         # Train the classifier
         self.load_data()
-        self.setup_classifier(simple_features=cfg.params["simple_features"],
-                              complex_features=cfg.params["complex_features"])
+        self.setup_classifier()
 
         self.get_dataset_information()
 
@@ -70,7 +70,11 @@ class CSClassifier:
         self.lb = preprocessing.LabelBinarizer()
         self.X, self.y = self.extract_features_from_df(self.csd_data_df.iloc[:74])
         self.X = np.array(self.X)
-        # self.X = self.X.reshape([self.X.shape[0], self.X.shape[1] * self.X.shape[2]])
+        self.X_df = pd.DataFrame(data=self.X, index=range(0, self.X.shape[0]),
+                                 columns=['act' + str(y) + ' ' + x for x in cfg.params["simple_features"] for y in
+                                          range(0, cfg.params["n_act"])])
+        y_df = pd.DataFrame(data=self.y, index=range(0, len(self.y)), columns=['label'])
+        self.X_df = self.X_df.join(y_df)
         self.lb.fit(self.y)
         # self.y = self.lb.transform(self.y)
         num_labels = np.unique(self.y, axis=0).shape[0]
