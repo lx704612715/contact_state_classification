@@ -6,7 +6,9 @@ path = {
 # This is where all classifier configuration parameters are stored.
 # Since different classifiers may be used, parameters may need to be nested.
 params = {
-    "simple_features": ["dist", "obs_ee_theta", "obs_ee_phi"],
-    "complex_features": ["error_q"],
-    "classifier": "SOM"
+    "simple_features": ["dist"],
+    "complex_features": [],
+    "n_splits": 8,
+    "n_neighbors": 3,
+    "classifier": "KNN"
 }

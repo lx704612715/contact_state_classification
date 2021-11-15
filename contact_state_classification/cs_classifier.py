@@ -7,6 +7,9 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn_som.som import SOM
 from . import config as cfg
 from sklearn.decomposition import PCA
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import ShuffleSplit
 
 
 class CSClassifier:
@@ -22,7 +25,7 @@ class CSClassifier:
         self.csd_data_df = None
         self.csd_data_dict = None
         self.X = []
-        self.Y = []
+        self.y = []
 
         # Classifier
         self.lb = None
@@ -34,7 +37,7 @@ class CSClassifier:
 
         # Train the classifier
         self.load_data()
-        self.train_classifier(simple_features=cfg.params["simple_features"],
+        self.setup_classifier(simple_features=cfg.params["simple_features"],
                               complex_features=cfg.params["complex_features"])
 
         self.get_dataset_information()
@@ -63,23 +66,31 @@ class CSClassifier:
                 feature_values[label].append(self.csd_data_dict[feature][traj_index])
         return feature_values
 
-    def train_classifier(self, simple_features=None, complex_features=None):
-        if complex_features is None:
-            complex_features = ["error_q"]
-        if simple_features is None:
-            simple_features = ["dist"]
+    def setup_classifier(self):
         self.lb = preprocessing.LabelBinarizer()
-        self.X, self.Y = self.extract_features_from_df(self.csd_data_df.iloc[:74])
+        self.X, self.y = self.extract_features_from_df(self.csd_data_df.iloc[:74])
         self.X = np.array(self.X)
         # self.X = self.X.reshape([self.X.shape[0], self.X.shape[1] * self.X.shape[2]])
-        self.lb.fit(self.Y)
-        self.Y = self.lb.transform(self.Y)
-        num_labels = np.unique(self.Y, axis=0).shape[0]
+        self.lb.fit(self.y)
+        # self.y = self.lb.transform(self.y)
+        num_labels = np.unique(self.y, axis=0).shape[0]
         if cfg.params["classifier"] == "KNN":
-            self.classifier = KNeighborsClassifier(n_neighbors=num_labels)
-            self.classifier.fit(self.X, self.Y)
+            self.classifier = KNeighborsClassifier(n_neighbors=cfg.params["n_neighbors"])
+            self.classifier.fit(self.X, self.y)
         elif cfg.params["classifier"] == "SOM":
             self.classifier = SOM(m=6, n=1, dim=self.X.shape[1])
+            self.classifier.fit(self.X, epochs=10, shuffle=False)
+        else:
+            return
+
+    def cross_val_score(self, random_state=None):
+        skf = StratifiedKFold(n_splits=cfg.params["n_splits"], shuffle=True, random_state=random_state)
+        print(cross_val_score(self.classifier, self.X, self.y, cv=skf))
+
+    def fit(self):
+        if cfg.params["classifier"] == "KNN":
+            self.classifier.fit(self.X, self.y)
+        elif cfg.params["classifier"] == "SOM":
             self.classifier.fit(self.X, epochs=10, shuffle=False)
         else:
             return
