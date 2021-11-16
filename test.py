@@ -26,7 +26,8 @@ def main():
     # print(cs_classifier.classifier.transform(X))
     # print(result)
     # print(y)
-    # cs_classifier.cross_val_score(random.randint(1, 100))
+    cs_classifier.cross_val_score(random.randint(1, 100))
+
 
 if __name__ == "__main__":
     main()

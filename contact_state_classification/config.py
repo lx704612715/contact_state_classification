@@ -8,7 +8,7 @@ path = {
 params = {
     "n_act": 12,
     "simple_features": ["dist"],
-    "complex_features": [],
+    "complex_features": ["error_q"],
     "n_splits": 8,
     "n_neighbors": 3,
     "classifier": "KNN"

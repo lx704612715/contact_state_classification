@@ -70,9 +70,13 @@ class CSClassifier:
         self.lb = preprocessing.LabelBinarizer()
         self.X, self.y = self.extract_features_from_df(self.csd_data_df.iloc[:74])
         self.X = np.array(self.X)
+        columns_simple_features = ['act' + str(y) + ' ' + x for x in cfg.params["simple_features"] for y in
+                                   range(0, cfg.params["n_act"])]
+        columns_complex_features = ['act_' + str(y) + ' joint_' + str(z) + ' ' + x for x in
+                                    cfg.params["complex_features"] for y in
+                                    range(0, cfg.params["n_act"]) for z in range(0, 7)]
         self.X_df = pd.DataFrame(data=self.X, index=range(0, self.X.shape[0]),
-                                 columns=['act' + str(y) + ' ' + x for x in cfg.params["simple_features"] for y in
-                                          range(0, cfg.params["n_act"])])
+                                 columns= columns_simple_features + columns_complex_features)
         y_df = pd.DataFrame(data=self.y, index=range(0, len(self.y)), columns=['label'])
         self.X_df = self.X_df.join(y_df)
         self.lb.fit(self.y)
