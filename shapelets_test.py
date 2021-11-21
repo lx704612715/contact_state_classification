@@ -88,16 +88,16 @@ def main():
     shapelet_sizes = grabocka_params_to_shapelet_size_dict(n_ts=n_ts,
                                                            ts_sz=ts_sz,
                                                            n_classes=n_classes,
-                                                           l=1,
+                                                           l=0.1,
                                                            r=1)
 
     # Define the model using parameters provided by the authors (except that we
     # use fewer iterations here)
-    shp_clf = LearningShapelets(n_shapelets_per_size=shapelet_sizes,
+    shp_clf = LearningShapelets(n_shapelets_per_size={2: 12},
                                 optimizer=tf.optimizers.Adam(.01),
                                 batch_size=16,
                                 weight_regularizer=.01,
-                                max_iter=400,
+                                max_iter=800,
                                 random_state=42,
                                 verbose=0)
     shp_clf.fit(X, y)
@@ -125,7 +125,6 @@ def main():
     plt.title("Evolution of cross-entropy loss during training")
     plt.xlabel("Epochs")
     plt.show()
-
 
 if __name__ == "__main__":
     main()

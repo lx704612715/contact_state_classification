@@ -16,7 +16,6 @@ import random
 def main():
     experiment_dir = csc.config.path["experiment_dir"]
     cs_classifier = csc.CSClassifier(experiment_dir=experiment_dir, dataset_name=csc.config.path["dataset_name"])
-    cs_classifier.pca(n_components=5)
     # test_idx = [74]
     # df = cs_classifier.csd_data_df.iloc[test_idx]
     # X, y = csc.CSClassifier.extract_features_from_df(df)
@@ -24,7 +23,7 @@ def main():
     # print(cs_classifier.classifier.transform(X))
     # print(result)
     # print(y)
-    cs_classifier.cross_val_score(random.randint(1, 100))
+    cs_classifier.cross_val_score(42)
 
 
 if __name__ == "__main__":

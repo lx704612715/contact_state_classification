@@ -38,7 +38,7 @@ class CSClassifier:
 
         # Train the classifier
         self.load_data()
-        self.setup_classifier()
+        self.setup_classifier(cfg.params["use_pca"])
 
         self.get_dataset_information()
 
@@ -66,17 +66,17 @@ class CSClassifier:
                 feature_values[label].append(self.csd_data_dict[feature][traj_index])
         return feature_values
 
-    def setup_classifier(self):
+    def setup_classifier(self, use_pca=False):
         self.lb = preprocessing.LabelBinarizer()
-        self.X, self.y = self.extract_features_from_df(self.csd_data_df.iloc[:74])
+        self.X, self.y = self.extract_features_from_df(self.csd_data_df)
         self.X = np.array(self.X)
         columns_simple_features = ['act' + str(y) + ' ' + x for x in cfg.params["simple_features"] for y in
                                    range(0, cfg.params["n_act"])]
         columns_complex_features = ['act_' + str(y) + ' joint_' + str(z) + ' ' + x for x in
                                     cfg.params["complex_features"] for y in
-                                    range(0, cfg.params["n_act"]) for z in range(0, 7)]
+                                    range(0, cfg.params["n_act"]) for z in range(self.csd_data_dict[x][0][0].shape[0])]
         self.X_df = pd.DataFrame(data=self.X, index=range(0, self.X.shape[0]),
-                                 columns= columns_simple_features + columns_complex_features)
+                                 columns=columns_simple_features + columns_complex_features)
         y_df = pd.DataFrame(data=self.y, index=range(0, len(self.y)), columns=['label'])
         self.X_df = self.X_df.join(y_df)
         self.lb.fit(self.y)
@@ -84,17 +84,27 @@ class CSClassifier:
         num_labels = np.unique(self.y, axis=0).shape[0]
         if cfg.params["classifier"] == "KNN":
             self.classifier = KNeighborsClassifier(n_neighbors=cfg.params["n_neighbors"])
+            if use_pca:
+                self.pca()
             self.classifier.fit(self.X, self.y)
         elif cfg.params["classifier"] == "SOM":
             self.classifier = SOM(m=6, n=1, dim=self.X.shape[1])
+            if use_pca:
+                self.pca()
             self.classifier.fit(self.X, epochs=10, shuffle=False)
         else:
             return
 
     def cross_val_score(self, random_state=None):
-        skf = StratifiedKFold(n_splits=cfg.params["n_splits"], shuffle=True, random_state=random_state)
-        score = cross_val_score(self.classifier, self.X, self.y, cv=skf)
-        print(sum(score) / len(score))
+        if cfg.params["classifier"] == "KNN":
+            skf = StratifiedKFold(n_splits=cfg.params["n_splits"], shuffle=True, random_state=random_state)
+            score = cross_val_score(self.classifier, self.X, self.y, cv=skf)
+            print(sum(score) / len(score))
+        elif cfg.params["classifier"] == "SOM":
+            return
+        else:
+            return
+
 
     def fit(self):
         if cfg.params["classifier"] == "KNN":
@@ -117,9 +127,10 @@ class CSClassifier:
         elif cfg.params["classifier"] == "SOM":
             return result, None
 
-    def pca(self, n_components=5):
-        pca = PCA(n_components=n_components, svd_solver='auto', whiten='true')
+    def pca(self):
+        pca = PCA(n_components=cfg.params["n_components"], svd_solver='auto', whiten='true')
         pca.fit(self.X)
+        self.X = pca.transform(self.X)
         print(pca.explained_variance_ratio_)
         print(pca.explained_variance_)
 
@@ -136,6 +147,7 @@ class CSClassifier:
             X.append(x)
             y.append(row["label"])
         X = np.array(X)
+        y = np.array(y)
         return X, y
 
     @staticmethod
