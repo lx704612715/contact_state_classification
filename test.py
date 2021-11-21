@@ -1,16 +1,23 @@
-import pandas as pd
-import numpy as np
-from loguru import logger
-# Load dateloader
-from scipy.stats import gaussian_kde
-from sklearn import preprocessing
-from sklearn.neighbors import KNeighborsClassifier
-import contact_state_classification as csc
-from contact_state_classification import config as cfg
-import seaborn as sns
-import random
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import matplotlib.pyplot as plt
+from visdom import Visdom
+import numpy as np
+import pandas as pd
+import math
+import os.path
+import getpass
+from sys import platform as _platform
+from six.moves import urllib
+from contact_state_classification import config as cfg
+
+# Load dateloader
+import contact_state_classification as csc
 from contact_state_classification import utils
+
 
 def main():
     experiment_dir = csc.config.path["experiment_dir"]
@@ -24,19 +31,21 @@ def main():
     # print(y)
     cs_classifier.cross_val_score(42)
     # Plot the distances
-    plt.subplot(1, 1, 1)
-    for color, label in zip('rgbck', ('CS1', 'CS2', 'CS3', 'CS5', 'CS6')):
-        plt.scatter(cs_classifier.X[cs_classifier.y == label, 0], cs_classifier.X[cs_classifier.y == label, 1],
-                    c=color, label='{}'.format(label))
-    plt.title('Point Cloud after PCA Transformation with 2 PC',
-              fontsize=14)
-    plt.xlabel("1st PC")
-    plt.ylabel("2nd PC")
-    plt.legend()
-    plt.show()
-
+    viz = Visdom()
+    assert viz.check_connection()
+    try:
+        viz.scatter(
+            X=cs_classifier.X,
+            Y=[cfg.params["cs_index_map"][x] for x in cs_classifier.y],
+            opts=dict(
+                legend=list(cfg.params["cs_index_map"].keys()),
+                markersize=10,
+            )
+        )
+    except BaseException as err:
+        print('Skipped matplotlib example')
+        print('Error message: ', err)
 
 
 if __name__ == "__main__":
-    global plotter
-    plotter = utils.VisdomLinePlotter(env_name='Tutorial Plots')
+    main()
