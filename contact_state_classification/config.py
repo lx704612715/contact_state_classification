@@ -7,9 +7,9 @@ path = {
 # Since different classifiers may be used, parameters may need to be nested.
 params = {
     "n_act": 12,
-    "simple_features": ["dist"],
+    "simple_features": ["dist", "obs_ee_theta", "obs_ee_phi"],
     "complex_features": ["error_q"],
     "n_splits": 8,
-    "n_neighbors": 3,
+    "n_neighbors": 4,
     "classifier": "KNN"
 }

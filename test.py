@@ -8,9 +8,7 @@ from scipy.stats import gaussian_kde
 from sklearn import preprocessing
 from sklearn.neighbors import KNeighborsClassifier
 import contact_state_classification as csc
-import numpy as np
 from contact_state_classification import config as cfg
-import pandas as pd
 import seaborn as sns
 import random
 

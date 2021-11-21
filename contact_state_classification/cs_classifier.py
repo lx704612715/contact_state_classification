@@ -93,7 +93,8 @@ class CSClassifier:
 
     def cross_val_score(self, random_state=None):
         skf = StratifiedKFold(n_splits=cfg.params["n_splits"], shuffle=True, random_state=random_state)
-        print(cross_val_score(self.classifier, self.X, self.y, cv=skf))
+        score = cross_val_score(self.classifier, self.X, self.y, cv=skf)
+        print(sum(score) / len(score))
 
     def fit(self):
         if cfg.params["classifier"] == "KNN":
@@ -132,6 +133,21 @@ class CSClassifier:
                 x = x + row[feature]
             for feature in cfg.params["complex_features"]:
                 x = x + np.concatenate(row[feature]).ravel().tolist()
+            X.append(x)
+            y.append(row["label"])
+        X = np.array(X)
+        return X, y
+
+    @staticmethod
+    def extract_features_from_df_for_shapelet(df):
+        X = []
+        y = []
+        for index, row in df.iterrows():
+            x = np.zeros((cfg.params["n_act"], 0))
+            for feature in cfg.params["simple_features"]:
+                x = np.hstack((x, np.array(row[feature]).reshape((cfg.params["n_act"], 1))))
+            for feature in cfg.params["complex_features"]:
+                x = np.hstack((x, np.array(row[feature])))
             X.append(x)
             y.append(row["label"])
         X = np.array(X)
