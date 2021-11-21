@@ -1,8 +1,6 @@
 import pandas as pd
-import os
 import numpy as np
 from loguru import logger
-import sys
 # Load dateloader
 from scipy.stats import gaussian_kde
 from sklearn import preprocessing
@@ -12,7 +10,7 @@ from contact_state_classification import config as cfg
 import seaborn as sns
 import random
 import matplotlib.pyplot as plt
-
+from contact_state_classification import utils
 
 def main():
     experiment_dir = csc.config.path["experiment_dir"]
@@ -40,4 +38,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    global plotter
+    plotter = utils.VisdomLinePlotter(env_name='Tutorial Plots')
