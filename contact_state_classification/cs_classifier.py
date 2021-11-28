@@ -136,6 +136,7 @@ class CSClassifier:
                 opts=dict(
                     legend=list(cfg.params["cs_index_map"].keys()),
                     markersize=10,
+                    title="After PCA with %d PC" % (cfg.params["n_components"]),
                     xlabel="PC1",
                     ylabel="PC2",
                     zlabel="PC3",
