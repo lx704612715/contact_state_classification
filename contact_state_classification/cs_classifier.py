@@ -1,15 +1,24 @@
-import pandas as pd
 import os
+
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import tensorflow as tf
 from loguru import logger
 from sklearn import preprocessing
+from sklearn.decomposition import PCA
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import cross_val_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn_som.som import SOM
+from tslearn.shapelets import LearningShapelets, \
+    grabocka_params_to_shapelet_size_dict
+from tslearn.utils import ts_size
+from visdom import Visdom
+
+import contact_state_classification as csc
 from . import config as cfg
-from sklearn.decomposition import PCA
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import StratifiedKFold
-from sklearn.model_selection import ShuffleSplit
 
 
 class CSClassifier:
@@ -24,8 +33,10 @@ class CSClassifier:
         # Dataset
         self.csd_data_df = None
         self.csd_data_dict = None
+        # Filtered data for training
         self.X = []
         self.y = []
+        # Filtered data for visualization
         self.X_df = None
 
         # Classifier
@@ -68,17 +79,11 @@ class CSClassifier:
 
     def setup_classifier(self, use_pca=False):
         self.lb = preprocessing.LabelBinarizer()
-        self.X, self.y = self.extract_features_from_df(self.csd_data_df)
-        self.X = np.array(self.X)
-        columns_simple_features = ['act' + str(y) + ' ' + x for x in cfg.params["simple_features"] for y in
-                                   range(0, cfg.params["n_act"])]
-        columns_complex_features = ['act_' + str(y) + ' joint_' + str(z) + ' ' + x for x in
-                                    cfg.params["complex_features"] for y in
-                                    range(0, cfg.params["n_act"]) for z in range(self.csd_data_dict[x][0][0].shape[0])]
-        self.X_df = pd.DataFrame(data=self.X, index=range(0, self.X.shape[0]),
-                                 columns=columns_simple_features + columns_complex_features)
-        y_df = pd.DataFrame(data=self.y, index=range(0, len(self.y)), columns=['label'])
-        self.X_df = self.X_df.join(y_df)
+        if cfg.params["classifier"] == "SHP":
+            self.X, self.y = csc.CSClassifier.extract_features_from_df_for_shapelet(self.csd_data_df)
+        else:
+            self.X, self.y = self.extract_features_from_df(self.csd_data_df)
+            self.X = np.array(self.X)
         self.lb.fit(self.y)
         # self.y = self.lb.transform(self.y)
         num_labels = np.unique(self.y, axis=0).shape[0]
@@ -92,16 +97,106 @@ class CSClassifier:
             if use_pca:
                 self.pca()
             self.classifier.fit(self.X, epochs=10, shuffle=False)
+        elif cfg.params["classifier"] == "SHP":
+            n_ts, ts_sz = self.X.shape[:2]
+            n_classes = len(set(self.y))
+
+            # Set the number of shapelets per size as done in the original paper
+            shapelet_sizes = grabocka_params_to_shapelet_size_dict(n_ts=n_ts,
+                                                                   ts_sz=ts_sz,
+                                                                   n_classes=n_classes,
+                                                                   l=0.4,
+                                                                   r=1)
+            print(shapelet_sizes)
+            # Define the model using parameters provided by the authors (except that we
+            # use fewer iterations here)
+            self.classifier = LearningShapelets(n_shapelets_per_size=shapelet_sizes,
+                                        optimizer=tf.optimizers.Adam(.01),
+                                        batch_size=16,
+                                        weight_regularizer=.01,
+                                        max_iter=400,
+                                        random_state=42,
+                                        verbose=0)
+            self.classifier.fit(self.X, self.y)
+
+            if cfg.params["basic_visualization"]:
+                self.shapelet_visualization(shapelet_sizes)
+
         else:
             return
 
+    def shapelet_visualization(self, shapelet_sizes):
+        distances = self.classifier.transform(self.X)
+        # Make predictions and calculate accuracy score
+        pred_labels = self.classifier.predict(self.X)
+        print("Correct classification rate:", accuracy_score(self.y, pred_labels))
+
+        # Plot the different discovered shapelets
+        plt.figure()
+        for i, sz in enumerate(shapelet_sizes.keys()):
+            plt.subplot(len(shapelet_sizes), 1, i + 1)
+            plt.title("%d shapelets of size %d" % (shapelet_sizes[sz], sz))
+            for shp in self.classifier.shapelets_:
+                if ts_size(shp) == sz:
+                    plt.plot(shp.ravel())
+            plt.xlim([0, max(shapelet_sizes.keys()) - 1])
+
+        plt.tight_layout()
+        plt.show()
+
+        # The loss history is accessible via the `model_` that is a keras model
+        plt.figure()
+        plt.plot(np.arange(1, self.classifier.n_iter_ + 1), self.classifier.history_["loss"])
+        plt.title("Evolution of cross-entropy loss during training")
+        plt.xlabel("Epochs")
+        plt.show()
+
+        viz = Visdom()
+        assert viz.check_connection()
+        try:
+            for i, sz in enumerate(shapelet_sizes.keys()):
+                viz.scatter(
+                    X=distances,
+                    Y=[cfg.params["cs_index_map"][x] for x in pred_labels],
+                    opts=dict(
+                        legend=list(cfg.params["cs_index_map"].keys()),
+                        markersize=5,
+                        title="%d shapelets of size %d" % (shapelet_sizes[sz], sz),
+                        xlabel="Distance to 1st Shapelet",
+                        ylabel="Distance to 2nd Shapelet",
+                        zlabel="Distance to 3rd Shapelet",
+                    )
+                )
+
+        except BaseException as err:
+            print('Skipped matplotlib example')
+            print('Error message: ', err)
+
+    def extract_df(self, X):
+        columns_simple_features = ['act' + str(y) + ' ' + x for x in cfg.params["simple_features"] for y in
+                                   range(0, cfg.params["n_act"])]
+        columns_complex_features = ['act_' + str(y) + ' joint_' + str(z) + ' ' + x for x in
+                                    cfg.params["complex_features"] for y in
+                                    range(0, cfg.params["n_act"]) for z in range(self.csd_data_dict[x][0][0].shape[0])]
+        X_df = pd.DataFrame(data=X, index=range(0, X.shape[0]),
+                                 columns=columns_simple_features + columns_complex_features)
+        y_df = pd.DataFrame(data=self.y, index=range(0, len(self.y)), columns=['label'])
+        return X_df.join(y_df)
+
     def cross_val_score(self, random_state=None):
+        skf = StratifiedKFold(n_splits=cfg.params["n_splits"], shuffle=True, random_state=random_state)
         if cfg.params["classifier"] == "KNN":
-            skf = StratifiedKFold(n_splits=cfg.params["n_splits"], shuffle=True, random_state=random_state)
             score = cross_val_score(self.classifier, self.X, self.y, cv=skf)
             print(sum(score) / len(score))
         elif cfg.params["classifier"] == "SOM":
             return
+        elif cfg.params["classifier"] == "SHP":
+            for train_index, test_index in skf.split(self.X, self.y):
+                X_train, X_test = self.X[train_index], self.X[test_index]
+                y_train, y_test = self.y[train_index], self.y[test_index]
+                self.classifier.fit(X_train, y_train)
+                pred_labels = self.classifier.predict(X_test)
+                print("Correct classification rate:", accuracy_score(y_test, pred_labels))
         else:
             return
 
@@ -163,4 +258,5 @@ class CSClassifier:
             X.append(x)
             y.append(row["label"])
         X = np.array(X)
+        y = np.array(y)
         return X, y
