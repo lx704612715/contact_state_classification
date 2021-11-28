@@ -87,15 +87,15 @@ class CSClassifier:
         self.lb.fit(self.y)
         # self.y = self.lb.transform(self.y)
         num_labels = np.unique(self.y, axis=0).shape[0]
+        if use_pca:
+            self.pca()
         if cfg.params["classifier"] == "KNN":
             self.classifier = KNeighborsClassifier(n_neighbors=cfg.params["n_neighbors"])
-            if use_pca:
-                self.pca()
             self.classifier.fit(self.X, self.y)
+            if cfg.params["basic_visualization"]:
+                self.knn_visualization()
         elif cfg.params["classifier"] == "SOM":
             self.classifier = SOM(m=6, n=1, dim=self.X.shape[1])
-            if use_pca:
-                self.pca()
             self.classifier.fit(self.X, epochs=10, shuffle=False)
         elif cfg.params["classifier"] == "SHP":
             n_ts, ts_sz = self.X.shape[:2]
@@ -124,6 +124,26 @@ class CSClassifier:
 
         else:
             return
+
+    def knn_visualization(self):
+        # Plot the distances
+        viz = Visdom()
+        assert viz.check_connection()
+        try:
+            viz.scatter(
+                X=self.X,
+                Y=[cfg.params["cs_index_map"][x] for x in self.y],
+                opts=dict(
+                    legend=list(cfg.params["cs_index_map"].keys()),
+                    markersize=10,
+                    xlabel="PC1",
+                    ylabel="PC2",
+                    zlabel="PC3",
+                )
+            )
+        except BaseException as err:
+            print('Skipped matplotlib example')
+            print('Error message: ', err)
 
     def shapelet_visualization(self, shapelet_sizes):
         distances = self.classifier.transform(self.X)
@@ -223,10 +243,14 @@ class CSClassifier:
             return result, None
 
     def pca(self):
+        if len(self.X.shape) > 2:
+            return
         pca = PCA(n_components=cfg.params["n_components"], svd_solver='auto', whiten='true')
         pca.fit(self.X)
         self.X = pca.transform(self.X)
+        print("variance_ratio:")
         print(pca.explained_variance_ratio_)
+        print("variance:")
         print(pca.explained_variance_)
 
     @staticmethod

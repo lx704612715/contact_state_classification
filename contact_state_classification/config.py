@@ -9,11 +9,11 @@ params = {
     "n_act": 12,
     "use_pca": True,
     "basic_visualization": True,
-    "simple_features": ["dist", "d_ee_theta", "d_ee_phi", "obs_ee_theta", "obs_ee_phi"],
+    "simple_features": ["dist"],
     "complex_features": ["error_q"],
     "n_splits": 8,
     "n_neighbors": 4,
-    "n_components": 2,
-    "classifier": "SHP",
+    "n_components": 3,
+    "classifier": "KNN",
     "cs_index_map": {"CS1": 1, "CS2": 2, "CS3": 3, "CS5": 4, "CS6": 5}
 }

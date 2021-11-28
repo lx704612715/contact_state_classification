@@ -29,22 +29,8 @@ def main():
     # print(cs_classifier.classifier.transform(X))
     # print(result)
     # print(y)
-    # cs_classifier.cross_val_score(42)
-    # Plot the distances
-    # viz = Visdom()
-    # assert viz.check_connection()
-    # try:
-    #     viz.scatter(
-    #         X=cs_classifier.X,
-    #         Y=[cfg.params["cs_index_map"][x] for x in cs_classifier.y],
-    #         opts=dict(
-    #             legend=list(cfg.params["cs_index_map"].keys()),
-    #             markersize=10,
-    #         )
-    #     )
-    # except BaseException as err:
-    #     print('Skipped matplotlib example')
-    #     print('Error message: ', err)
+    cs_classifier.cross_val_score(42)
+
 
 
 if __name__ == "__main__":
