@@ -193,7 +193,8 @@ class CSClassifier:
             print('Skipped matplotlib example')
             print('Error message: ', err)
 
-    def extract_df(self, X):
+    def extract_df(self):
+        X, y = self.extract_features_from_df(self.csd_data_df)
         columns_simple_features = ['act' + str(y) + ' ' + x for x in cfg.params["simple_features"] for y in
                                    range(0, cfg.params["n_act"])]
         columns_complex_features = ['act_' + str(y) + ' joint_' + str(z) + ' ' + x for x in
