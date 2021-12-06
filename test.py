@@ -21,7 +21,9 @@ from contact_state_classification import utils
 
 def main():
     experiment_dir = csc.config.path["experiment_dir"]
-    cs_classifier = csc.CSClassifier(experiment_dir=experiment_dir, dataset_name=csc.config.path["dataset_name"])
+    cs_classifier = csc.CSClassifier(experiment_dir=experiment_dir,
+                                     dataset_name_list=csc.config.path["dataset"],
+                                     test_set_name_list=csc.config.path["test_set"])
     # test_idx = [74]
     # df = cs_classifier.csd_data_df.iloc[test_idx]
     # X, y = csc.CSClassifier.extract_features_from_df(df)

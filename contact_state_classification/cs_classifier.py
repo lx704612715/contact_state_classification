@@ -22,10 +22,11 @@ from . import config as cfg
 
 
 class CSClassifier:
-    def __init__(self, experiment_dir, dataset_name):
+    def __init__(self, experiment_dir, dataset_name_list, test_set_name_list):
         self.experiment_dir = experiment_dir
-        self.dataset_name = dataset_name
-        self.dataset_path = self.experiment_dir + "/csd_result/" + dataset_name + ".pkl"
+        self.dataset_name_list = dataset_name_list
+        self.dataset_path_list = [self.experiment_dir + "/csd_result/" + x + ".pkl" for x in dataset_name_list]
+        self.test_set_list = [self.experiment_dir + "/csd_result/" + x + ".pkl" for x in test_set_name_list]
         self.csd_dataset_plot_dir = self.experiment_dir + "/csd_result/plot/"
         os.makedirs(self.csd_dataset_plot_dir, exist_ok=True)
         self.csc_logger = logger
@@ -33,6 +34,8 @@ class CSClassifier:
         # Dataset
         self.csd_data_df = None
         self.csd_data_dict = None
+        self.csd_test_data_df = None
+        self.csd_test_data_dict = None
         # Filtered data for training
         self.X = []
         self.y = []
@@ -55,8 +58,18 @@ class CSClassifier:
 
     def load_data(self):
         # load data to dict, because processing of dataframe takes too much time
-        self.csd_data_df = pd.read_pickle(self.dataset_path)
+        for path in self.dataset_path_list:
+            if self.csd_data_df is None:
+                self.csd_data_df = pd.read_pickle(path)
+            else:
+                self.csd_data_df.append(pd.read_pickle(path))
         self.csd_data_dict = self.csd_data_df.to_dict()
+        for path in self.test_set_list:
+            if self.csd_test_data_df is None:
+                self.csd_test_data_df = pd.read_pickle(path)
+            else:
+                self.csd_test_data_df.append(pd.read_pickle(path))
+        self.csd_test_data_dict = self.csd_test_data_df.to_dict()
 
     def get_traj_index_by_labels(self, label):
         traj_index_dict = dict()
@@ -83,7 +96,6 @@ class CSClassifier:
             self.X, self.y = csc.CSClassifier.extract_features_from_df_for_shapelet(self.csd_data_df)
         else:
             self.X, self.y = self.extract_features_from_df(self.csd_data_df)
-            self.X = np.array(self.X)
         self.lb.fit(self.y)
         # self.y = self.lb.transform(self.y)
         num_labels = np.unique(self.y, axis=0).shape[0]
@@ -208,8 +220,13 @@ class CSClassifier:
     def cross_val_score(self, random_state=None):
         skf = StratifiedKFold(n_splits=cfg.params["n_splits"], shuffle=True, random_state=random_state)
         if cfg.params["classifier"] == "KNN":
-            score = cross_val_score(self.classifier, self.X, self.y, cv=skf)
-            print(sum(score) / len(score))
+            if (cfg.params["use_test_set"]):
+                X_test, y_test = self.extract_features_from_df(self.csd_test_data_df)
+                pred_labels = self.classifier.predict(X_test)
+                print("Correct classification rate:", accuracy_score(y_test, pred_labels))
+            else:
+                score = cross_val_score(self.classifier, self.X, self.y, cv=skf)
+                print(sum(score) / len(score))
         elif cfg.params["classifier"] == "SOM":
             return
         elif cfg.params["classifier"] == "SHP":
@@ -234,7 +251,7 @@ class CSClassifier:
     def get_dataset_information(self):
         self.all_classes = self.lb.classes_
         self.num_classes = len(self.all_classes)
-        self.csc_logger.info("All classes from the dataset {} are {}: ", self.dataset_name, self.all_classes)
+        self.csc_logger.info("All classes from the dataset {} are {}: ", self.dataset_name_list, self.all_classes)
 
     def predict(self, input_data):
         result = self.classifier.predict(input_data)
