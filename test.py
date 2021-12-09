@@ -17,6 +17,7 @@ from contact_state_classification import config as cfg
 # Load dateloader
 import contact_state_classification as csc
 from contact_state_classification import utils
+from scipy.interpolate import interp1d
 
 
 def main():
@@ -32,6 +33,8 @@ def main():
     # print(result)
     # print(y)
     cs_classifier.cross_val_score(42)
+
+    cs_classifier.view_feature()
 
 
 

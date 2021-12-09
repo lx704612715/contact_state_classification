@@ -43,7 +43,9 @@ def example_pyts():
 
 def main_pyts():
     experiment_dir = csc.config.path["experiment_dir"]
-    cs_classifier = csc.CSClassifier(experiment_dir=experiment_dir, dataset_name=csc.config.path["dataset_name"])
+    cs_classifier = csc.CSClassifier(experiment_dir=experiment_dir,
+                                     dataset_name_list=csc.config.path["dataset"],
+                                     test_set_name_list=csc.config.path["test_set"])
     df = cs_classifier.csd_data_df
     X, y = csc.CSClassifier.extract_features_from_df(df)
     clf = LearningShapelets(random_state=42, tol=0.01)
@@ -80,4 +82,4 @@ def main_pyts():
 
 
 if __name__ == "__main__":
-    main_pyts()
+    example_pyts()

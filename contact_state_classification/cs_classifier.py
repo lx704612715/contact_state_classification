@@ -6,6 +6,7 @@ import pandas as pd
 import tensorflow as tf
 from loguru import logger
 from sklearn import preprocessing
+from tslearn.preprocessing import TimeSeriesScalerMinMax
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import StratifiedKFold
@@ -16,6 +17,7 @@ from tslearn.shapelets import LearningShapelets, \
     grabocka_params_to_shapelet_size_dict
 from tslearn.utils import ts_size
 from visdom import Visdom
+from scipy.interpolate import interp1d
 
 import contact_state_classification as csc
 from . import config as cfg
@@ -51,12 +53,12 @@ class CSClassifier:
         self.num_classes = None
 
         # Train the classifier
-        self.load_data()
+        self.load_data(cfg.params["interpolation"])
         self.setup_classifier(cfg.params["use_pca"])
 
         self.get_dataset_information()
 
-    def load_data(self):
+    def load_data(self, need_interpolate):
         # load data to dict, because processing of dataframe takes too much time
         for path in self.dataset_path_list:
             if self.csd_data_df is None:
@@ -64,12 +66,21 @@ class CSClassifier:
             else:
                 self.csd_data_df.append(pd.read_pickle(path))
         self.csd_data_dict = self.csd_data_df.to_dict()
-        for path in self.test_set_list:
-            if self.csd_test_data_df is None:
-                self.csd_test_data_df = pd.read_pickle(path)
-            else:
-                self.csd_test_data_df.append(pd.read_pickle(path))
-        self.csd_test_data_dict = self.csd_test_data_df.to_dict()
+
+        if cfg.params["use_test_set"]:
+            for path in self.test_set_list:
+                if self.csd_test_data_df is None:
+                    self.csd_test_data_df = pd.read_pickle(path)
+                else:
+                    self.csd_test_data_df.append(pd.read_pickle(path))
+            self.csd_test_data_dict = self.csd_test_data_df.to_dict()
+
+        self.lb = preprocessing.LabelBinarizer()
+        if cfg.params["classifier"] == "SHP":
+            self.X, self.y = csc.CSClassifier.extract_features_from_df_for_shapelet(self.csd_data_df, need_interpolate)
+        else:
+            self.X, self.y = self.extract_features_from_df(self.csd_data_df)
+        self.lb.fit(self.y)
 
     def get_traj_index_by_labels(self, label):
         traj_index_dict = dict()
@@ -91,12 +102,6 @@ class CSClassifier:
         return feature_values
 
     def setup_classifier(self, use_pca=False):
-        self.lb = preprocessing.LabelBinarizer()
-        if cfg.params["classifier"] == "SHP":
-            self.X, self.y = csc.CSClassifier.extract_features_from_df_for_shapelet(self.csd_data_df)
-        else:
-            self.X, self.y = self.extract_features_from_df(self.csd_data_df)
-        self.lb.fit(self.y)
         # self.y = self.lb.transform(self.y)
         num_labels = np.unique(self.y, axis=0).shape[0]
         if use_pca:
@@ -123,13 +128,14 @@ class CSClassifier:
             # Define the model using parameters provided by the authors (except that we
             # use fewer iterations here)
             self.classifier = LearningShapelets(n_shapelets_per_size=shapelet_sizes,
-                                        optimizer=tf.optimizers.Adam(.01),
-                                        batch_size=16,
-                                        weight_regularizer=.01,
-                                        max_iter=400,
-                                        random_state=42,
-                                        verbose=0)
-            self.classifier.fit(self.X, self.y)
+                                                optimizer=tf.optimizers.Adam(.01),
+                                                batch_size=16,
+                                                weight_regularizer=.01,
+                                                max_iter=400,
+                                                random_state=42,
+                                                verbose=0)
+            self.classifier.fit(TimeSeriesScalerMinMax().fit_transform(self.X),
+                                self.y)
 
             if cfg.params["basic_visualization"]:
                 self.shapelet_visualization(shapelet_sizes)
@@ -205,6 +211,32 @@ class CSClassifier:
             print('Skipped matplotlib example')
             print('Error message: ', err)
 
+    def view_feature(self):
+        viz = Visdom()
+        assert viz.check_connection()
+        new_dim = csc.config.params["n_act"] * csc.config.params["upsampling_rate"]
+        new_x = np.linspace(1, csc.config.params["n_act"],
+                            num=new_dim,
+                            endpoint=True)
+
+        try:
+            for cs in csc.config.params["cs_index_map"].keys():
+                index_list = np.where(self.y == cs)[0].tolist()
+                viz.line(
+                    X=new_x,
+                    Y=np.take(self.X, index_list, 0)[:, :, 0].T,
+                    opts=dict(
+                        markersize=10,
+                        title="Dist" + cs,
+                        xlabel="ACT",
+                        ylabel="Dist"
+                    )
+                )
+        except BaseException as err:
+            print('Skipped matplotlib example')
+            print('Error message: ', err)
+
+
     def extract_df(self):
         X, y = self.extract_features_from_df(self.csd_data_df)
         columns_simple_features = ['act' + str(y) + ' ' + x for x in cfg.params["simple_features"] for y in
@@ -213,7 +245,7 @@ class CSClassifier:
                                     cfg.params["complex_features"] for y in
                                     range(0, cfg.params["n_act"]) for z in range(self.csd_data_dict[x][0][0].shape[0])]
         X_df = pd.DataFrame(data=X, index=range(0, X.shape[0]),
-                                 columns=columns_simple_features + columns_complex_features)
+                            columns=columns_simple_features + columns_complex_features)
         y_df = pd.DataFrame(data=self.y, index=range(0, len(self.y)), columns=['label'])
         return X_df.join(y_df)
 
@@ -233,12 +265,14 @@ class CSClassifier:
             for train_index, test_index in skf.split(self.X, self.y):
                 X_train, X_test = self.X[train_index], self.X[test_index]
                 y_train, y_test = self.y[train_index], self.y[test_index]
+                X_train = TimeSeriesScalerMinMax().fit_transform(X_train)
+                X_test = TimeSeriesScalerMinMax().fit_transform(X_test)
                 self.classifier.fit(X_train, y_train)
                 pred_labels = self.classifier.predict(X_test)
+                # print(self.classifier.predict_proba(X_test))
                 print("Correct classification rate:", accuracy_score(y_test, pred_labels))
         else:
             return
-
 
     def fit(self):
         if cfg.params["classifier"] == "KNN":
@@ -289,13 +323,21 @@ class CSClassifier:
         return X, y
 
     @staticmethod
-    def extract_features_from_df_for_shapelet(df):
+    def extract_features_from_df_for_shapelet(df, need_interpolate):
         X = []
         y = []
+        new_dim = csc.config.params["n_act"] * csc.config.params["upsampling_rate"]
         for index, row in df.iterrows():
-            x = np.zeros((cfg.params["n_act"], 0))
+            x = np.zeros((new_dim, 0))
             for feature in cfg.params["simple_features"]:
-                x = np.hstack((x, np.array(row[feature]).reshape((cfg.params["n_act"], 1))))
+                original_y = np.array(row[feature]).reshape((cfg.params["n_act"]))
+                original_x = np.linspace(1, csc.config.params["n_act"], num=csc.config.params["n_act"], endpoint=True)
+                f = interp1d(original_x, original_y, kind=csc.config.params["interpolation_method"])
+                new_x = np.linspace(1, csc.config.params["n_act"],
+                                    num=new_dim,
+                                    endpoint=True)
+
+                x = np.hstack((x, f(new_x).reshape((new_dim, 1))))
             for feature in cfg.params["complex_features"]:
                 x = np.hstack((x, np.array(row[feature])))
             X.append(x)

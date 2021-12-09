@@ -215,4 +215,4 @@ def main():
         print('Error message: ', err)
 
 if __name__ == "__main__":
-    main()
+    example()

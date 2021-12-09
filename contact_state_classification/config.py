@@ -9,13 +9,16 @@ path = {
 params = {
     "n_act": 12,
     "use_pca": False,
-    "basic_visualization": False,
-    "use_test_set": True,
+    "basic_visualization": True,
+    "use_test_set": False,
+    "interpolation": True,
+    "interpolation_method": "cubic",
+    "upsampling_rate": 32,
     "simple_features": ["dist"],
     "complex_features": [],
-    "n_splits": 8,
+    "n_splits": 4,
     "n_neighbors": 4,
-    "n_components": 3,
-    "classifier": "KNN",
+    "n_components": 2,
+    "classifier": "SHP",
     "cs_index_map": {"CS1": 1, "CS2": 2, "CS3": 3, "CS5": 4, "CS6": 5}
 }
