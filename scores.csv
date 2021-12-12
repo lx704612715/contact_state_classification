@@ -1,0 +1,6 @@
+KNN,False,False,False,quadratic,['RoboticsProject0112'],['RoboticsProject2510'],"['dist', 'd_ee_theta', 'd_ee_phi', 'obs_ee_theta', 'obs_ee_phi', 'error_q']","[1.0, 1.0, 0.9, 0.8888888888888888, 0.7777777777777778, 0.8888888888888888, 0.8888888888888888, 1.0]",0.37333333333333335
+KNN,False,False,False,quadratic,['RoboticsProject0112'],['RoboticsProject2510'],"['dist', 'error_q']","[1.0, 1.0, 1.0, 0.8888888888888888, 1.0, 1.0, 1.0, 1.0]",0.5733333333333334
+KNN,False,False,False,quadratic,['RoboticsProject0112'],['RoboticsProject2510'],['dist'],"[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]",0.5733333333333334
+KNN,True,16,False,linear,['RoboticsProject0112'],['RoboticsProject2510'],"['dist', 'd_ee_theta', 'd_ee_phi', 'obs_ee_theta', 'obs_ee_phi', 'error_q']","[0.9, 1.0, 0.9, 0.8888888888888888, 1.0, 0.6666666666666666, 0.7777777777777778, 1.0]",0.30666666666666664
+KNN,True,16,False,linear,['RoboticsProject0112'],['RoboticsProject2510'],"['dist', 'error_q']","[1.0, 1.0, 1.0, 0.8888888888888888, 0.8888888888888888, 1.0, 1.0, 1.0]",0.5466666666666666
+KNN,True,16,False,linear,['RoboticsProject0112'],['RoboticsProject2510'],['dist'],"[1.0, 1.0, 1.0, 1.0, 0.8888888888888888, 1.0, 1.0, 1.0]",0.41333333333333333
