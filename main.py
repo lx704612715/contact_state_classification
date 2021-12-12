@@ -13,6 +13,7 @@ import getpass
 from sys import platform as _platform
 from six.moves import urllib
 from contact_state_classification import config as cfg
+import csv
 
 # Load dateloader
 import contact_state_classification as csc
@@ -32,11 +33,13 @@ def main():
     # print(cs_classifier.classifier.transform(X))
     # print(result)
     # print(y)
-    cs_classifier.cross_val_score(42)
-
-    cs_classifier.view_feature()
-
-
+    cs_classifier.log_to_csv(42, "./scores_SHP.csv")
+    # cs_classifier.score_with_diff_grasp_pose()
 
 if __name__ == "__main__":
     main()
+    with open('./scores_SHP.csv') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            print(list(map(float, row[8].strip('][').split(', '))))
+            print(row[9])

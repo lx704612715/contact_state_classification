@@ -1,23 +1,23 @@
+import csv
 import os
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from loguru import logger
+from scipy.interpolate import interp1d
 from sklearn import preprocessing
-from tslearn.preprocessing import TimeSeriesScalerMinMax
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import cross_val_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn_som.som import SOM
+from tslearn.preprocessing import TimeSeriesScalerMinMax
 from tslearn.shapelets import LearningShapelets, \
     grabocka_params_to_shapelet_size_dict
 from tslearn.utils import ts_size
 from visdom import Visdom
-from scipy.interpolate import interp1d
 
 import contact_state_classification as csc
 from . import config as cfg
@@ -44,6 +44,8 @@ class CSClassifier:
         # Filtered data for visualization
         self.X_df = None
 
+        self.pca = None
+
         # Classifier
         self.lb = None
         self.classifier = None
@@ -53,12 +55,12 @@ class CSClassifier:
         self.num_classes = None
 
         # Train the classifier
-        self.load_data(cfg.params["interpolation"])
+        self.load_data(cfg.params["circular_splicing"])
         self.setup_classifier(cfg.params["use_pca"])
 
         self.get_dataset_information()
 
-    def load_data(self, need_interpolate):
+    def load_data(self, circular_splicing):
         # load data to dict, because processing of dataframe takes too much time
         for path in self.dataset_path_list:
             if self.csd_data_df is None:
@@ -67,17 +69,17 @@ class CSClassifier:
                 self.csd_data_df.append(pd.read_pickle(path))
         self.csd_data_dict = self.csd_data_df.to_dict()
 
-        if cfg.params["use_test_set"]:
-            for path in self.test_set_list:
-                if self.csd_test_data_df is None:
-                    self.csd_test_data_df = pd.read_pickle(path)
-                else:
-                    self.csd_test_data_df.append(pd.read_pickle(path))
+        for path in self.test_set_list:
+            if self.csd_test_data_df is None:
+                self.csd_test_data_df = pd.read_pickle(path)
+            else:
+                self.csd_test_data_df.append(pd.read_pickle(path))
+        if len(self.test_set_list) != 0:
             self.csd_test_data_dict = self.csd_test_data_df.to_dict()
 
         self.lb = preprocessing.LabelBinarizer()
         if cfg.params["classifier"] == "SHP":
-            self.X, self.y = csc.CSClassifier.extract_features_from_df_for_shapelet(self.csd_data_df, need_interpolate)
+            self.X, self.y = csc.CSClassifier.extract_features_from_df_for_shapelet(self.csd_data_df, circular_splicing)
         else:
             self.X, self.y = self.extract_features_from_df(self.csd_data_df)
         self.lb.fit(self.y)
@@ -105,7 +107,7 @@ class CSClassifier:
         # self.y = self.lb.transform(self.y)
         num_labels = np.unique(self.y, axis=0).shape[0]
         if use_pca:
-            self.pca()
+            self.apply_pca()
         if cfg.params["classifier"] == "KNN":
             self.classifier = KNeighborsClassifier(n_neighbors=cfg.params["n_neighbors"])
             self.classifier.fit(self.X, self.y)
@@ -122,7 +124,7 @@ class CSClassifier:
             shapelet_sizes = grabocka_params_to_shapelet_size_dict(n_ts=n_ts,
                                                                    ts_sz=ts_sz,
                                                                    n_classes=n_classes,
-                                                                   l=0.4,
+                                                                   l=cfg.params["shaplet_size"],
                                                                    r=1)
             print(shapelet_sizes)
             # Define the model using parameters provided by the authors (except that we
@@ -131,13 +133,18 @@ class CSClassifier:
                                                 optimizer=tf.optimizers.Adam(.01),
                                                 batch_size=16,
                                                 weight_regularizer=.01,
-                                                max_iter=400,
+                                                max_iter=800,
                                                 random_state=42,
                                                 verbose=0)
-            self.classifier.fit(TimeSeriesScalerMinMax().fit_transform(self.X),
+            self.X = TimeSeriesScalerMinMax().fit_transform(self.X)
+            self.classifier.fit(self.X,
                                 self.y)
+            # Make predictions and calculate accuracy score
+            pred_labels = self.classifier.predict(TimeSeriesScalerMinMax().fit_transform(self.X))
+            print("Correct classification rate:", accuracy_score(self.y, pred_labels))
 
             if cfg.params["basic_visualization"]:
+                # self.view_feature()
                 self.shapelet_visualization(shapelet_sizes)
 
         else:
@@ -166,44 +173,48 @@ class CSClassifier:
 
     def shapelet_visualization(self, shapelet_sizes):
         distances = self.classifier.transform(self.X)
-        # Make predictions and calculate accuracy score
-        pred_labels = self.classifier.predict(self.X)
-        print("Correct classification rate:", accuracy_score(self.y, pred_labels))
-
-        # Plot the different discovered shapelets
-        plt.figure()
-        for i, sz in enumerate(shapelet_sizes.keys()):
-            plt.subplot(len(shapelet_sizes), 1, i + 1)
-            plt.title("%d shapelets of size %d" % (shapelet_sizes[sz], sz))
-            for shp in self.classifier.shapelets_:
-                if ts_size(shp) == sz:
-                    plt.plot(shp.ravel())
-            plt.xlim([0, max(shapelet_sizes.keys()) - 1])
-
-        plt.tight_layout()
-        plt.show()
-
-        # The loss history is accessible via the `model_` that is a keras model
-        plt.figure()
-        plt.plot(np.arange(1, self.classifier.n_iter_ + 1), self.classifier.history_["loss"])
-        plt.title("Evolution of cross-entropy loss during training")
-        plt.xlabel("Epochs")
-        plt.show()
-
         viz = Visdom()
         assert viz.check_connection()
         try:
+            # for i, sz in enumerate(shapelet_sizes.keys()):
+            #     viz.scatter(
+            #         X=distances,
+            #         Y=[cfg.params["cs_index_map"][x] for x in pred_labels],
+            #         opts=dict(
+            #             legend=list(cfg.params["cs_index_map"].keys()),
+            #             markersize=5,
+            #             title="%d shapelets of size %d" % (shapelet_sizes[sz], sz),
+            #             xlabel="Distance to 1st Shapelet",
+            #             ylabel="Distance to 2nd Shapelet",
+            #             zlabel="Distance to 3rd Shapelet",
+            #         )
+            #     )
+
             for i, sz in enumerate(shapelet_sizes.keys()):
-                viz.scatter(
-                    X=distances,
-                    Y=[cfg.params["cs_index_map"][x] for x in pred_labels],
+                shapelets = np.zeros((sz, 0))
+                for shp in self.classifier.shapelets_:
+                    if ts_size(shp) == sz:
+                        shapelets = np.hstack((shapelets, shp.ravel().reshape((sz, 1))))
+
+                viz.line(
+                    X=np.linspace(0, sz, num=sz, endpoint=False),
+                    Y=shapelets,
                     opts=dict(
-                        legend=list(cfg.params["cs_index_map"].keys()),
-                        markersize=5,
-                        title="%d shapelets of size %d" % (shapelet_sizes[sz], sz),
-                        xlabel="Distance to 1st Shapelet",
-                        ylabel="Distance to 2nd Shapelet",
-                        zlabel="Distance to 3rd Shapelet",
+                        markersize=10,
+                        title="%d shapeplets of size %d" % (shapelet_sizes[sz], sz),
+                        xlabel="ACT",
+                        ylabel="Dist"
+                    )
+                )
+
+                viz.line(
+                    X=np.arange(1, self.classifier.n_iter_ + 1),
+                    Y=self.classifier.history_["loss"],
+                    opts=dict(
+                        markersize=10,
+                        title="%d shapeplets of size %d" % (shapelet_sizes[sz], sz),
+                        xlabel="Epochs",
+                        ylabel="Loss"
                     )
                 )
 
@@ -215,6 +226,8 @@ class CSClassifier:
         viz = Visdom()
         assert viz.check_connection()
         new_dim = csc.config.params["n_act"] * csc.config.params["upsampling_rate"]
+        if csc.config.params["circular_splicing"]:
+            new_dim = new_dim * 2
         new_x = np.linspace(1, csc.config.params["n_act"],
                             num=new_dim,
                             endpoint=True)
@@ -227,7 +240,7 @@ class CSClassifier:
                     Y=np.take(self.X, index_list, 0)[:, :, 0].T,
                     opts=dict(
                         markersize=10,
-                        title="Dist" + cs,
+                        title="Dist " + cs,
                         xlabel="ACT",
                         ylabel="Dist"
                     )
@@ -235,7 +248,6 @@ class CSClassifier:
         except BaseException as err:
             print('Skipped matplotlib example')
             print('Error message: ', err)
-
 
     def extract_df(self):
         X, y = self.extract_features_from_df(self.csd_data_df)
@@ -252,16 +264,11 @@ class CSClassifier:
     def cross_val_score(self, random_state=None):
         skf = StratifiedKFold(n_splits=cfg.params["n_splits"], shuffle=True, random_state=random_state)
         if cfg.params["classifier"] == "KNN":
-            if (cfg.params["use_test_set"]):
-                X_test, y_test = self.extract_features_from_df(self.csd_test_data_df)
-                pred_labels = self.classifier.predict(X_test)
-                print("Correct classification rate:", accuracy_score(y_test, pred_labels))
-            else:
-                score = cross_val_score(self.classifier, self.X, self.y, cv=skf)
-                print(sum(score) / len(score))
+            return cross_val_score(self.classifier, self.X, self.y, cv=skf).tolist()
         elif cfg.params["classifier"] == "SOM":
             return
         elif cfg.params["classifier"] == "SHP":
+            score = []
             for train_index, test_index in skf.split(self.X, self.y):
                 X_train, X_test = self.X[train_index], self.X[test_index]
                 y_train, y_test = self.y[train_index], self.y[test_index]
@@ -270,9 +277,83 @@ class CSClassifier:
                 self.classifier.fit(X_train, y_train)
                 pred_labels = self.classifier.predict(X_test)
                 # print(self.classifier.predict_proba(X_test))
-                print("Correct classification rate:", accuracy_score(y_test, pred_labels))
+                s = accuracy_score(y_test, pred_labels)
+                print(s)
+                score.append(s)
+            return score
         else:
             return
+
+    def score_with_diff_grasp_pose(self):
+        if cfg.params["classifier"] == "KNN":
+            X_test, y_test = self.extract_features_from_df(self.csd_test_data_df)
+            if cfg.params["use_pca"]:
+                X_test = self.pca.transform(X_test)
+            pred_labels = self.classifier.predict(X_test)
+            return accuracy_score(y_test, pred_labels)
+        elif cfg.params["classifier"] == "SOM":
+            return
+        elif cfg.params["classifier"] == "SHP":
+            X_test, y_test = self.extract_features_from_df_for_shapelet(self.csd_test_data_df,
+                                                                        cfg.params["circular_splicing"])
+            X_test = TimeSeriesScalerMinMax().fit_transform(X_test)
+            pred_labels = self.classifier.predict(X_test)
+            # print(self.classifier.predict_proba(X_test))
+            return accuracy_score(y_test, pred_labels)
+
+    def log_to_csv(self, random_state=None, file_path=None):
+        columns_KNN = ["Classifier",
+                       "Use PCA",
+                       "Upsampling Rate",
+                       "Circular Splicing",
+                       "Interpolation Method",
+                       "Training Dataset",
+                       "Test Dataset",
+                       "Features",
+                       "Scores from same Dataset",
+                       "Scores from other Dataset"]
+
+        columns_SHP = ["Classifier",
+                       "Use PCA",
+                       "Upsampling Rate",
+                       "Circular Splicing",
+                       "Interpolation Method",
+                       "Training Dataset",
+                       "Test Dataset",
+                       "Features",
+                       "Scores from same Dataset",
+                       "Scores from other Dataset",
+                       "Shapelet Size"]
+
+        if os.path.isfile(file_path):
+            csvfile = open(file_path, 'a')
+        else:
+            csvfile = open(file_path, 'w')
+        csvwriter = csv.writer(csvfile)
+        if cfg.params["classifier"] == "SHP":
+            csvwriter.writerow([cfg.params["classifier"],
+                                cfg.params["use_pca"],
+                                cfg.params["upsampling_rate"],
+                                cfg.params["circular_splicing"],
+                                cfg.params["interpolation_method"],
+                                cfg.path["dataset"],
+                                cfg.path["test_set"],
+                                cfg.params["simple_features"] + cfg.params["complex_features"],
+                                str(self.cross_val_score(random_state)),
+                                str(self.score_with_diff_grasp_pose()),
+                                cfg.params["shaplet_size"]])
+        elif cfg.params["classifier"] == "KNN":
+            csvwriter.writerow([cfg.params["classifier"],
+                                cfg.params["use_pca"],
+                                cfg.params["upsampling_rate"],
+                                cfg.params["circular_splicing"],
+                                cfg.params["interpolation_method"],
+                                cfg.path["dataset"],
+                                cfg.path["test_set"],
+                                cfg.params["simple_features"] + cfg.params["complex_features"],
+                                str(self.cross_val_score(random_state)),
+                                str(self.score_with_diff_grasp_pose())])
+        csvfile.close()
 
     def fit(self):
         if cfg.params["classifier"] == "KNN":
@@ -295,16 +376,16 @@ class CSClassifier:
         elif cfg.params["classifier"] == "SOM":
             return result, None
 
-    def pca(self):
+    def apply_pca(self):
         if len(self.X.shape) > 2:
             return
-        pca = PCA(n_components=cfg.params["n_components"], svd_solver='auto', whiten='true')
-        pca.fit(self.X)
-        self.X = pca.transform(self.X)
+        self.pca = PCA(n_components=cfg.params["n_components"], svd_solver='auto', whiten='true')
+        self.pca.fit(self.X)
+        self.X = self.pca.transform(self.X)
         print("variance_ratio:")
-        print(pca.explained_variance_ratio_)
+        print(self.pca.explained_variance_ratio_)
         print("variance:")
-        print(pca.explained_variance_)
+        print(self.pca.explained_variance_)
 
     @staticmethod
     def extract_features_from_df(df):
@@ -323,23 +404,35 @@ class CSClassifier:
         return X, y
 
     @staticmethod
-    def extract_features_from_df_for_shapelet(df, need_interpolate):
+    def extract_features_from_df_for_shapelet(df, circular_splicing):
         X = []
         y = []
         new_dim = csc.config.params["n_act"] * csc.config.params["upsampling_rate"]
+        n_act = csc.config.params["n_act"]
+        if circular_splicing:
+            new_dim = new_dim * 2
+            n_act = n_act * 2
         for index, row in df.iterrows():
             x = np.zeros((new_dim, 0))
             for feature in cfg.params["simple_features"]:
                 original_y = np.array(row[feature]).reshape((cfg.params["n_act"]))
-                original_x = np.linspace(1, csc.config.params["n_act"], num=csc.config.params["n_act"], endpoint=True)
+                original_x = np.linspace(1, n_act, num=n_act, endpoint=True)
+                if circular_splicing:
+                    original_y = np.hstack((original_y, original_y))
                 f = interp1d(original_x, original_y, kind=csc.config.params["interpolation_method"])
-                new_x = np.linspace(1, csc.config.params["n_act"],
-                                    num=new_dim,
-                                    endpoint=True)
-
-                x = np.hstack((x, f(new_x).reshape((new_dim, 1))))
+                new_x = np.linspace(1, n_act, num=new_dim, endpoint=True)
+                x_slice = f(new_x)
+                x = np.hstack((x, x_slice.reshape((x_slice.size, 1))))
             for feature in cfg.params["complex_features"]:
-                x = np.hstack((x, np.array(row[feature])))
+                original_y = np.array(row[feature]).T
+                original_x = np.linspace(1, n_act, num=n_act, endpoint=True)
+                new_x = np.linspace(1, n_act, num=new_dim, endpoint=True)
+                if circular_splicing:
+                    original_y = np.hstack((original_y, original_y))
+                for r in original_y:
+                    f = interp1d(original_x, r, kind=csc.config.params["interpolation_method"])
+                    x_slice = f(new_x)
+                    x = np.hstack((x, x_slice.reshape((x_slice.size, 1))))
             X.append(x)
             y.append(row["label"])
         X = np.array(X)
