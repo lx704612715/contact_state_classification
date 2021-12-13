@@ -33,13 +33,9 @@ def main():
     # print(cs_classifier.classifier.transform(X))
     # print(result)
     # print(y)
-    cs_classifier.log_to_csv(42, "./scores_SHP.csv")
+    # cs_classifier.log_to_csv(42, "./scores_SHP.csv")
     # cs_classifier.score_with_diff_grasp_pose()
+    # cs_classifier.view_feature()
 
 if __name__ == "__main__":
     main()
-    with open('./scores_SHP.csv') as f:
-        reader = csv.reader(f)
-        for row in reader:
-            print(list(map(float, row[8].strip('][').split(', '))))
-            print(row[9])
