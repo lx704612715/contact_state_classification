@@ -49,6 +49,7 @@ https://upload.wikimedia.org/wikipedia/commons/d/dc/3D_Spherical_2.svg
 
 ### How to use
 1. Download the dataset from https://drive.google.com/drive/folders/1GyiogHXgIxUiuVfkc2BFoljfxg-VJTo3 and put it in `contact_state_classification/tests/1908/hfv/csd_result/`
-2. Check `contact_state_classification/config.py`, Add the features you want to use to SIMPLE_FEATURES and COMPLEX_FEATURES according to the table above, SIMPLE_FEATURES being features with only one dimension and COMPLEX_FEATURES being features with more than one dimension.
-3. Run `main.py`, and check result in the console or write to logfile using `cs_classifier::log_to_csv`
-4. Visualize the result using `plotter.py`
+2. Check `contact_state_classification/config.py`, Add the features you want to use to `SIMPLE_FEATURES` and `COMPLEX_FEATURES` according to the table above, `SIMPLE_FEATURES` being features with only one dimension and `COMPLEX_FEATURES` being features with more than one dimension.
+3. Then check the other parameters. If `CIRCULAR_SPLICING` is on, the results of the local exploration are repeated once, to achieve a circular filling effect. `INTERPOLATION_METHOD` is used to control the method used for interpolation. `UPSAMPLING_RATE` is used to control the density of interpolation. `N_SPLITS` is used to control the size of the Stratified KFold partition.
+4. Run `main.py`, and check result in the console or write to logfile using `cs_classifier::log_to_csv`
+5. Visualize the result using `plotter.py`
