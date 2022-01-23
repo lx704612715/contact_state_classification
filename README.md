@@ -40,29 +40,15 @@ https://upload.wikimedia.org/wikipedia/commons/d/dc/3D_Spherical_2.svg
   
   We transform the translation (x, y, z) into spherical coordinate to reduce the dimensionality from 3(x, y, z) to 2 (theta, phi). As we are only interested in moving direction namely theta and phi
 
-### TODO List
+### Requirement
+- numpy
+- pandas
+- tslearn
+- visdom
+- tensorflow
 
-- [x] Simple Dataset (Only for one lock and one grasp pose, named RoboticsProject2510.pkl in the Google cloud)
-- [x] Simple Classifier  
-- [x] Doc/Explanation for feature values
-- [ ] Rapidly Visualization Tool
-  - [ ] Easy modify and visualize the dataset
-  - [ ] Candidate tools: Facets, Visdom
-- [x] Dataset includes multi locks and grasp poses
-  - [ ] two different latch locks
-  - [ ] three different grasp poses
-
-### Project Plan
-- [ ] 02.11-08.11 Feature preprocessing + Literature Review/ Research(parallel work)
-- [ ] 09.11-15.11 Feature preprocessing + Feature engineering
-- [ ] 16.11-22.11 Feature engineering + visualization of the original data
-- [ ] 23.11-29.11 Implementation of KNN classifier + verification + visualization
-- [ ] 30.11-06.12 Reasoning for KNN + documentation + Testing
-- [ ] 07.12-13.12 Research of State of other art classifiers, find 3 possible best candidates
-- [ ] Break
-- [ ] 04.01-10.01 Implementing 1st best classifier + validation
-- [ ] 11.01-17.01 Visualization + reasoning
-- [ ] 18.01-24.01 Implementing 2nd best classifier
-- [ ] 25.01-31.01 Implementing last best classifier (optional)
-- [ ] 01.02-07.02 Final Presentation + Testing on real robot, hopefully :) 
-- [ ] 08.02-14.02 Results, documentation and The report / Presentation
+### How to use
+1. Download the dataset from https://drive.google.com/drive/folders/1GyiogHXgIxUiuVfkc2BFoljfxg-VJTo3 and put it in `contact_state_classification/tests/1908/hfv/csd_result/`
+2. Check `contact_state_classification/config.py`, Add the features you want to use to SIMPLE_FEATURES and COMPLEX_FEATURES according to the table above, SIMPLE_FEATURES being features with only one dimension and COMPLEX_FEATURES being features with more than one dimension.
+3. Run `main.py`, and check result in the console or write to logfile using `cs_classifier::log_to_csv`
+4. Visualize the result using `plotter.py`
