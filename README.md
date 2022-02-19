@@ -6,6 +6,7 @@ This is the repo for the robotics project "contact state classification using ma
 - pandas
 - tslearn (for Shapelets classifier)
 - visdom
+- facets
 - tensorflow
 
 ### How to use
