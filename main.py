@@ -34,7 +34,7 @@ def main():
     # print(result)
     # print(y)
     # cs_classifier.log_to_csv(42, "./scores_SHP.csv")
-    # cs_classifier.score_with_diff_grasp_pose()
+    print(cs_classifier.score_with_diff_grasp_pose())
     # cs_classifier.view_feature()
 
 if __name__ == "__main__":

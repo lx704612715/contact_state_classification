@@ -1,6 +1,21 @@
 # contact_state_classification
 This is the repo for the robotics project "contact state classification using machine learning".
 
+### Requirement
+- numpy
+- pandas
+- tslearn (for Shapelets classifier)
+- visdom
+- tensorflow
+
+### How to use
+1. Download the dataset from https://drive.google.com/drive/folders/1GyiogHXgIxUiuVfkc2BFoljfxg-VJTo3 and put it in `contact_state_classification/tests/1908/hfv/csd_result/`
+2. Check `contact_state_classification/config.py`, Add the features you want to use to `SIMPLE_FEATURES` and `COMPLEX_FEATURES` according to the table blow, `SIMPLE_FEATURES` being features with only one dimension and `COMPLEX_FEATURES` being features with more than one dimension.
+3. Then check the other parameters. If `CIRCULAR_SPLICING` is on, the results of the local exploration are repeated once, to achieve a circular filling effect. `INTERPOLATION_METHOD` is used to control the method used for interpolation. `UPSAMPLING_RATE` is used to control the density of interpolation. `N_SPLITS` is used to control the size of the Stratified KFold partition.
+4. Run `main.py`, and check result in the console or write to logfile using `cs_classifier::log_to_csv`
+5. Visualize the result using `plotter.py`, you need to turn on the visdom server before running this script.
+
+
 #### Resources
 Google Drive: https://drive.google.com/drive/folders/1GyiogHXgIxUiuVfkc2BFoljfxg-VJTo3
 Datasets e.g., RoboticsProject2510.pkl and demo video e.g., wiggling_example.mp4 are saved here.
@@ -39,17 +54,3 @@ Datasets e.g., RoboticsProject2510.pkl and demo video e.g., wiggling_example.mp4
 https://upload.wikimedia.org/wikipedia/commons/d/dc/3D_Spherical_2.svg
   
   We transform the translation (x, y, z) into spherical coordinate to reduce the dimensionality from 3(x, y, z) to 2 (theta, phi). As we are only interested in moving direction namely theta and phi
-
-### Requirement
-- numpy
-- pandas
-- tslearn
-- visdom
-- tensorflow
-
-### How to use
-1. Download the dataset from https://drive.google.com/drive/folders/1GyiogHXgIxUiuVfkc2BFoljfxg-VJTo3 and put it in `contact_state_classification/tests/1908/hfv/csd_result/`
-2. Check `contact_state_classification/config.py`, Add the features you want to use to `SIMPLE_FEATURES` and `COMPLEX_FEATURES` according to the table above, `SIMPLE_FEATURES` being features with only one dimension and `COMPLEX_FEATURES` being features with more than one dimension.
-3. Then check the other parameters. If `CIRCULAR_SPLICING` is on, the results of the local exploration are repeated once, to achieve a circular filling effect. `INTERPOLATION_METHOD` is used to control the method used for interpolation. `UPSAMPLING_RATE` is used to control the density of interpolation. `N_SPLITS` is used to control the size of the Stratified KFold partition.
-4. Run `main.py`, and check result in the console or write to logfile using `cs_classifier::log_to_csv`
-5. Visualize the result using `plotter.py`

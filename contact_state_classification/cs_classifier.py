@@ -110,7 +110,7 @@ class CSClassifier:
             self.apply_pca()
         if cfg.CLASSIFIER == "KNN":
             self.classifier = KNeighborsClassifier(n_neighbors=cfg.N_NEIGHBORS)
-            self.classifier.fit(self.X, self.y)
+            self.classifier.fit(self.X[:101], self.y[:101])
             if cfg.BASIC_VISUALIZATION:
                 self.knn_visualization()
         elif cfg.CLASSIFIER == "SOM":
@@ -298,10 +298,10 @@ class CSClassifier:
         elif cfg.CLASSIFIER == "SHP":
             X_test, y_test = self.extract_features_from_df_for_shapelet(self.csd_test_data_df,
                                                                         cfg.CIRCULAR_SPLICING)
-            X_test = TimeSeriesScalerMinMax().fit_transform(X_test)
+            X_test = TimeSeriesScalerMinMax().fit_transform(X_test[101:])
             pred_labels = self.classifier.predict(X_test)
             # print(self.classifier.predict_proba(X_test))
-            return accuracy_score(y_test, pred_labels)
+            return accuracy_score(y_test[101:], pred_labels)
 
     def log_to_csv(self, random_state=None, file_path=None):
         columns_KNN = ["Classifier",
@@ -382,8 +382,8 @@ class CSClassifier:
         if len(self.X.shape) > 2:
             return
         self.pca = PCA(n_components=cfg.N_COMPONENTS, svd_solver='auto', whiten='true')
-        self.pca.fit(self.X)
-        self.X = self.pca.transform(self.X)
+        self.pca.fit(self.X[:101])
+        self.X = self.pca.transform(self.X[:101])
         print("variance_ratio:")
         print(self.pca.explained_variance_ratio_)
         print("variance:")

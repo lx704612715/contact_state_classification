@@ -1,15 +1,15 @@
 # This is where all file names and path-related parameters are stored.
 path = {
     "experiment_dir": "contact_state_classification/tests/1908_hfv",
-    "dataset": ["RoboticsProject2510"],
-    "test_set": ["RoboticsProject2510"]
+    "dataset": ["RoboticsProject0301"],
+    "test_set": ["RoboticsProject0301"]
 }
 # This is where all classifier configuration parameters are stored.
 # Since different classifiers may be used, parameters may need to be nested.
 params = {
     "n_act": 12,
     "use_pca": False,
-    "basic_visualization": True,
+    "basic_visualization": False,
     "circular_splicing": False,
     "interpolation_method": "linear",
     "upsampling_rate": 16,
@@ -19,7 +19,7 @@ params = {
     "n_splits": 8,
     "n_neighbors": 4,
     "n_components": 3,
-    "classifier": "SHP",
+    "classifier": "KNN",
     "cs_index_map": {"CS1": 1, "CS2": 2, "CS3": 3, "CS5": 4, "CS6": 5}
 }
 
@@ -36,4 +36,4 @@ N_SPLITS = 8
 N_NEIGHBORS = 4
 N_COMPONENTS = 3
 CLASSIFIER = "SHP"  # [KNN, SHP]
-CS_INDEX_MAP = {"CS1": 1, "CS2": 2, "CS3": 3, "CS5": 4, "CS6": 5}
+CS_INDEX_MAP = {"CS1": 1, "CS2": 2, "CS3": 3, "CS4": 4, "CS5": 5, "CS6": 6}
