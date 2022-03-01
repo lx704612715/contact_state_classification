@@ -34,7 +34,10 @@ def main():
     # print(result)
     # print(y)
     # cs_classifier.log_to_csv(42, "./scores_SHP.csv")
-    print(cs_classifier.score_with_diff_grasp_pose())
+    cs_classifier.csc_logger.info("Classifier {} trained on {} test on {} score {}",
+                                  csc.config.CLASSIFIER, csc.config.path["dataset"],
+                                  csc.config.path["test_set"],
+                                  cs_classifier.score_with_diff_grasp_pose())
     # cs_classifier.view_feature()
 
 if __name__ == "__main__":
