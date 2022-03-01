@@ -298,10 +298,10 @@ class CSClassifier:
         elif cfg.CLASSIFIER == "SHP":
             X_test, y_test = self.extract_features_from_df_for_shapelet(self.csd_test_data_df,
                                                                         cfg.CIRCULAR_SPLICING)
-            X_test = TimeSeriesScalerMinMax().fit_transform(X_test[101:])
+            X_test = TimeSeriesScalerMinMax().fit_transform(X_test)
             pred_labels = self.classifier.predict(X_test)
             # print(self.classifier.predict_proba(X_test))
-            return accuracy_score(y_test[101:], pred_labels)
+            return accuracy_score(y_test, pred_labels)
 
     def log_to_csv(self, random_state=None, file_path=None):
         columns_KNN = ["Classifier",
