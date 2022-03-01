@@ -8,7 +8,7 @@ path = {
 # Since different classifiers may be used, parameters may need to be nested.
 N_ACT = 12
 USE_PCA = False
-BASIC_VISUALIZATION = True
+BASIC_VISUALIZATION = False
 CIRCULAR_SPLICING = False
 INTERPOLATION_METHOD = "linear"  # [linear, quadratic, cubic]
 UPSAMPLING_RATE = 16
