@@ -2,7 +2,7 @@
 path = {
     "experiment_dir": "contact_state_classification/tests/1908_hfv",
     "dataset": ["RoboticsProject0112"],
-    "test_set": ["RoboticsProject0301"]
+    "test_set": ["RoboticsProject0112"]
 }
 # This is where all classifier configuration parameters are stored.
 # Since different classifiers may be used, parameters may need to be nested.
